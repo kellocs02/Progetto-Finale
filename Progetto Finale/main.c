@@ -18,13 +18,15 @@
 
 
 int main(){
+    printf("ciao\n");
+    printf("Inizio Programma\n");
     pthread_t thread[MAX_CLIENT]; //creiamo il pool di thread
     int contatore_thread=0;
     int numero_chunk=0;
     char** Collezione_chunk=malloc(DIM_CHUNK+1); //Alloco lo spazio per contenere almeno un chunk
     numero_chunk++;
     chunk(&Collezione_chunk,&numero_chunk);
-    StampaChunk(&Collezione_chunk,numero_chunk);
+    StampaChunk(Collezione_chunk,numero_chunk);
     //Dopo questa istruzione abbiamo il numero di chunk
     sleep(40);
 
@@ -36,7 +38,7 @@ int main(){
     //AF_INET-> IPv4
     //SOCK_STREAM → TCP
     //0 -> Protocollo automatico (TCP)
-    server_fd= socket(AF_INET, SOCK_STEAM, 0);
+    server_fd= socket(AF_INET, SOCK_STREAM, 0);
     if(server_fd < 0){
         perror("Socket fallita");
         exit(EXIT_FAILURE);
@@ -77,7 +79,7 @@ int main(){
         }
 
         printf("Connessione accettata da %s:%d\n",inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
-        pthread_create(thread[contatore_thread],NULL,funzioneThread,.....)
+        //pthread_create(thread[contatore_thread],NULL,funzioneThread,.....)
         
     }
 }

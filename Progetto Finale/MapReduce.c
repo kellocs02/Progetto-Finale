@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <string.h>
+#include <unistd.h>
 #include "MapReduce.h" 
 
 //funzione eseguita da ogni thread
@@ -16,14 +17,16 @@ void* FunzioneThread(){
 
 
 
-void ContaChunk(char ** Collezione_chunk, int numero_chunk){
+void StampaChunk(char ** Collezione_chunk, int numero_chunk){
         for(int i=0;i<numero_chunk;i++){
             printf("Chunk numero %d: %s\n",i,Collezione_chunk[i]);
         }
+        return;
 }
 
 //alla fine del ciclo di letture del file, averemo un array di puntatori dinamico popolato dai vari chunk
 void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk){
+    printf("siamo in salva_chunk\n");
     char* copia= malloc(strlen(chunk)+1); // strlen restituisce il numero di caratteri visibili escludendo il terminatore di riga quindi poniamo +1
                                           // Non usiamo sizeof perchè ci restituirebbe la lunghezza del tipo, in questo caso il puntatore in un'architettura a 64 bit è 64
     if (!copia) {
@@ -44,12 +47,14 @@ void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk){
 
 
 void chunk(char*** collezione_chunk,int *numero_chunk) {
+    printf("siamo entrati in chunk\n");
     FILE *f = fopen("lotr.txt", "r");
     if (!f) {
         perror("errore apertura file");
         return;
     }
-
+    printf("abbiamo aperto il file di LOTR\n");
+    sleep(5);
     char *buffer = malloc(DIM_CHUNK + 1); //allochiamo 512 kb di spazio per il buffer +1 per il carattere terminatore di stringa
     if (!buffer) {
         perror("errore allocazione buffer");
@@ -57,9 +62,9 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
         return;
     }
 
-    while (!feof(f)) {
+    while (1) {
         size_t n = fread(buffer, 1, DIM_CHUNK, f); //leggiamo un blocco, RESTITUISCE 0 SE NON HA LETTO NULLA
-
+        printf("Valore di n: %zu\n", n);
         if (n == 0) {
             if (feof(f)) break;
             if (ferror(f)) {
@@ -77,20 +82,23 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
         char *ultimo_spazio = strrchr(buffer, ' '); //ci restituisce un puntatore a carattere che punta all'ultimo spazio nel buffer
                                                     //se non ci sono spazi, cosa altamente improbabile, entriamo nell'if
 
-        if (!ultimo_spazio) {
+        if (!ultimo_spazio || ultimo_spazio==buffer) {
             ultimo_spazio = buffer + n; //buffer punta al primo elemento dello spazio di memoria che abbiamo allocato, 
                                         //n sono i caratteri successivi che abbiamo immesso nel buffer,
                                         //ultimo_spazio ora punta alla posizione successiva a tutto questo blocco
         }
 
         size_t lunghezza_chunk = ultimo_spazio - buffer;
+        printf("ultimo_spazio - buffer = %ld\n", ultimo_spazio - buffer);
 
         char *chunk = malloc(lunghezza_chunk + 1); //copiamo il chunk buono, senza parole spezzate 
         memcpy(chunk, buffer, lunghezza_chunk);    //copiamo effettivamente i dati
         chunk[lunghezza_chunk] = '\0';             //pongo il terminatore
-
+        printf("chunk1: %s\n",chunk);
+        sleep(5);
+        printf("Contenuto letto: '%.*s'\n", (int)n, buffer);
         salva_chunk(collezione_chunk, chunk, numero_chunk);
-
+        printf("siamo dopo salva_chunk\n");
         free(chunk); //libero lo spazio in memoria
 
         //indietro contiene il numero di byte letti in più rispetto a quelli che vogliamo usare
