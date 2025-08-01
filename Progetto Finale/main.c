@@ -5,6 +5,7 @@
 #include <arpa/inet.h>   // inet_ntoa, htons, sockaddr_in
 #include <sys/socket.h>  // socket(), bind(), listen(), accept()
 #include <netinet/in.h>  // struct sockaddr_in
+#include <pthread.h>
 #include "MapReduce.h" //file di libreria del progetto
 
 #define PORTA 8080
@@ -15,9 +16,17 @@
 //tagliamo fino all'ultimo spazio prima del 512 byte
 
 
+
 int main(){
+    pthread_t thread[MAX_CLIENT]; //creiamo il pool di thread
+    int contatore_thread=0;
+    int numero_chunk=0;
     char** Collezione_chunk=malloc(DIM_CHUNK+1); //Alloco lo spazio per contenere almeno un chunk
-    chuck(&Collezione_chunk);
+    numero_chunk++;
+    chunk(&Collezione_chunk,&numero_chunk);
+    StampaChunk(&Collezione_chunk,numero_chunk);
+    //Dopo questa istruzione abbiamo il numero di chunk
+    sleep(40);
 
     //creiamo il server TCP
     int server_fd, client_fd;
@@ -68,5 +77,7 @@ int main(){
         }
 
         printf("Connessione accettata da %s:%d\n",inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
+        pthread_create(thread[contatore_thread],NULL,funzioneThread,.....)
+        
     }
 }

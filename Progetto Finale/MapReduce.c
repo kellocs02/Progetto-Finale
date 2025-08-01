@@ -4,8 +4,25 @@
 #include <string.h>
 #include "MapReduce.h" 
 
+//funzione eseguita da ogni thread
+//Attraverso essa dobbiamo inviare i chunk al client
+//il client dovrà occupparsi delle operazioni di elaborazione di quest'ultimi
 
 
+
+void* FunzioneThread(){
+
+}
+
+
+
+void ContaChunk(char ** Collezione_chunk, int numero_chunk){
+        for(int i=0;i<numero_chunk;i++){
+            printf("Chunk numero %d: %s\n",i,Collezione_chunk[i]);
+        }
+}
+
+//alla fine del ciclo di letture del file, averemo un array di puntatori dinamico popolato dai vari chunk
 void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk){
     char* copia= malloc(strlen(chunk)+1); // strlen restituisce il numero di caratteri visibili escludendo il terminatore di riga quindi poniamo +1
                                           // Non usiamo sizeof perchè ci restituirebbe la lunghezza del tipo, in questo caso il puntatore in un'architettura a 64 bit è 64

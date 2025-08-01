@@ -1,1 +1,1 @@
-#define DIM_CHUNK  524.288 //in byte, rappresenta 512 kb
+#define DIM_CHUNK  65536 //16kb
