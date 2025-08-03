@@ -9,13 +9,13 @@
 #include "MapReduce.h" //file di libreria del progetto
 
 #define PORTA 8080
-#define MAX_CLIENT 10
+#define MAX_CLIENT 3
 
 //il primo passo è quello di prendere il file e suddividerlo in chunk da 512 byte
 //Essendo che eseguendo una divisione netta potremmo tagliare una parola a metà
 //tagliamo fino all'ultimo spazio prima del 512 byte
 
-
+int indice_assegnazione_chunk=0;
 
 int main(){
     printf("ciao\n");
@@ -23,12 +23,30 @@ int main(){
     pthread_t thread[MAX_CLIENT]; //creiamo il pool di thread
     int contatore_thread=0;
     int numero_chunk=0;
-    char** Collezione_chunk=malloc(DIM_CHUNK+1); //Alloco lo spazio per contenere almeno un chunk
-    numero_chunk++;
+    printf("numero chunk: %d\n",numero_chunk);
+    char** Collezione_chunk=NULL;//Alloco lo spazio per contenere almeno un chunk
     chunk(&Collezione_chunk,&numero_chunk);
+    printf("Prima di StampaChunk numero chunk: %d\n",numero_chunk);
     StampaChunk(Collezione_chunk,numero_chunk);
     //Dopo questa istruzione abbiamo il numero di chunk
-    sleep(40);
+    for(int i=0; i<numero_chunk;i++){
+        printf("Chunk %d: %s\n",i,Collezione_chunk[i]);
+        sleep(5);  
+    }
+    sleep(5);
+
+    //decidiamo qua come redistribuire i chunk tra i client.
+    //impostiamo che il servizio per funzionare deve far si che si colleghino tutti i client, quindi MAX_CLIENT
+    //redistribuiamo questi chunk su questi client
+    int indice_Di_Redistribuzione=0; //questa variabile viene utilizzata prima della fase di creazione del thread per gestire la distribuzione dei chunk sui client
+    int Chunk_Per_Client=0;
+    if(numero_chunk>MAX_CLIENT){
+        if(numero_chunk%MAX_CLIENT==0){
+            Chunk_Per_Client=numero_chunk/MAX_CLIENT;
+        }else{
+            Chunk_Per_Client=-1; //gestiamo in altro modo questa situazione
+        }
+    }
 
     //creiamo il server TCP
     int server_fd, client_fd;
@@ -57,6 +75,11 @@ int main(){
     }
 
     //mettiamo la socket in ascolto
+    //Imponiamo (per ora) il massimo di client connessi al numero di chunk
+    //ma non è la soluzione ottimale
+    //se numero di chunk troppo elevato grandi rischi di gestione per il server
+    //dobbiamo trovare un'altra soluzione
+    //edit rimettiamo MAXCLIENT
     if(listen(server_fd,MAX_CLIENT)<0){
         perror("Errore nella listen");
         close(server_fd);
@@ -79,7 +102,35 @@ int main(){
         }
 
         printf("Connessione accettata da %s:%d\n",inet_ntoa(client_addr.sin_addr),ntohs(client_addr.sin_port));
-        //pthread_create(thread[contatore_thread],NULL,funzioneThread,.....)
+        //dobbiamo decidere come gestire le connessioni, se mettere un limite in base ai chunk. 
+        //Cosa succede se abbiamo più chunk rispetto ai client connessi?
+        //Cosa succede se abbiamo meno chunk rispetto ai client connessi?
+        Struttura_Chunk S_Chunk[MAX_CLIENT];
+        if(numero_chunk!=-1){
+            //se numero chunk è diverso da meno 1 vuol dire che avremo una redistribuzione dei chunk in modo proporzionale tra i client
+             //dobbiamo creare un array di S_chunk perchè nel momento in cui passiamo il successivo chunk al seguente thread, se non creo l'array di chunk vi sarà una sovvrascrizione dell'area di memoria
+            S_Chunk[indice_assegnazione_chunk].numero_chunk=Chunk_Per_Client;
+            S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(numero_chunk*(sizeof(char*)));//alloco lo spazio per contenere i chunk
+            S_Chunk[indice_assegnazione_chunk].fd=client_fd; //fd per la comunicazione col client
+            for(int i=0;i<numero_chunk;i++){
+                strcpy(S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i],Collezione_chunk[indice_Di_Redistribuzione]);//copiamo i chunk nella struttura da chunk, così potremo passarla al pthread create
+            }
+            pthread_create(thread[contatore_thread],NULL,funzioneThread(),&S_Chunk);//Dobbiamo passare al thread sia l'FD della socket sia la struttura dati che contiene i chunk
+            indice_assegnazione_chunk++; //dovrebbe arrivara a (MAX_CLIENT-1) .... Controllare
+        }else{
+            //Entriamo qua se numero_chunk è -1, questo significa che vi sarà una distribuzione non proporzionale dei chunk tra i client connessi
+            if(numero_chunk<MAX_CLIENT){
+                for(int i=0;i<numero_chunk;i++){
+                    S_Chunk[indice_assegnazione_chunk].numero_chunk=Chunk_Per_Client;
+                    S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(1*(sizeof(char*))); //alloco lo spazio per un unico chunk
+                    S_Chunk[indice_assegnazione_chunk].fd=client_fd; //fd per la comunicazione col client
+                }
+
+            }else{
+
+                //numero chunk maggiore di MAX_ClIENT
+            }
+        }
         
     }
 }

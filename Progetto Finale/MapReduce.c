@@ -11,16 +11,20 @@
 
 
 
-void* FunzioneThread(){
+void* FunzioneThread(void* args){
+    
 
 }
 
 
 
 void StampaChunk(char ** Collezione_chunk, int numero_chunk){
+        printf("numero chunk: %d\n",numero_chunk);
         for(int i=0;i<numero_chunk;i++){
-            printf("Chunk numero %d: %s\n",i,Collezione_chunk[i]);
+            //printf("Chunk numero %d: %s\n",i,Collezione_chunk[i]);
+            printf("ciao\n");
         }
+        printf("numero chunk:%d\n",numero_chunk);
         return;
 }
 
@@ -54,7 +58,7 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
         return;
     }
     printf("abbiamo aperto il file di LOTR\n");
-    sleep(5);
+    sleep(1);
     char *buffer = malloc(DIM_CHUNK + 1); //allochiamo 512 kb di spazio per il buffer +1 per il carattere terminatore di stringa
     if (!buffer) {
         perror("errore allocazione buffer");
@@ -94,9 +98,9 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
         char *chunk = malloc(lunghezza_chunk + 1); //copiamo il chunk buono, senza parole spezzate 
         memcpy(chunk, buffer, lunghezza_chunk);    //copiamo effettivamente i dati
         chunk[lunghezza_chunk] = '\0';             //pongo il terminatore
-        printf("chunk1: %s\n",chunk);
-        sleep(5);
-        printf("Contenuto letto: '%.*s'\n", (int)n, buffer);
+        //printf("chunk1: %s\n",chunk);
+        sleep(2);
+        //printf("Contenuto letto: '%.*s'\n", (int)n, buffer);
         salva_chunk(collezione_chunk, chunk, numero_chunk);
         printf("siamo dopo salva_chunk\n");
         free(chunk); //libero lo spazio in memoria
