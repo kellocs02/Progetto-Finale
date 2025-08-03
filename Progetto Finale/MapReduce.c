@@ -12,7 +12,7 @@
 
 
 void* FunzioneThread(void* args){
-    
+    printf("ciao\n");
 
 }
 

@@ -31,9 +31,7 @@ int main(){
     //Dopo questa istruzione abbiamo il numero di chunk
     for(int i=0; i<numero_chunk;i++){
         printf("Chunk %d: %s\n",i,Collezione_chunk[i]);
-        sleep(5);  
     }
-    sleep(5);
 
     //decidiamo qua come redistribuire i chunk tra i client.
     //impostiamo che il servizio per funzionare deve far si che si colleghino tutti i client, quindi MAX_CLIENT
@@ -106,16 +104,19 @@ int main(){
         //Cosa succede se abbiamo più chunk rispetto ai client connessi?
         //Cosa succede se abbiamo meno chunk rispetto ai client connessi?
         Struttura_Chunk S_Chunk[MAX_CLIENT];
-        if(numero_chunk!=-1){
+        printf("Abbiamo creato la struttura Chunk\n");
+        if(Chunk_Per_Client!=-1){
+            printf("Siamo in Chunk_Per_Client diverso da 1\n");
             //se numero chunk è diverso da meno 1 vuol dire che avremo una redistribuzione dei chunk in modo proporzionale tra i client
              //dobbiamo creare un array di S_chunk perchè nel momento in cui passiamo il successivo chunk al seguente thread, se non creo l'array di chunk vi sarà una sovvrascrizione dell'area di memoria
             S_Chunk[indice_assegnazione_chunk].numero_chunk=Chunk_Per_Client;
             S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(numero_chunk*(sizeof(char*)));//alloco lo spazio per contenere i chunk
             S_Chunk[indice_assegnazione_chunk].fd=client_fd; //fd per la comunicazione col client
             for(int i=0;i<numero_chunk;i++){
+                S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i] = malloc(strlen(Collezione_chunk[indice_Di_Redistribuzione]) + 1); // +1 per '\0'
                 strcpy(S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i],Collezione_chunk[indice_Di_Redistribuzione]);//copiamo i chunk nella struttura da chunk, così potremo passarla al pthread create
             }
-            pthread_create(thread[contatore_thread],NULL,funzioneThread(),&S_Chunk[indice_assegnazione_chunk]);//Dobbiamo passare al thread sia l'FD della socket sia la struttura dati che contiene i chunk
+            pthread_create(&thread[contatore_thread],NULL,FunzioneThread,&S_Chunk[indice_assegnazione_chunk]);//Dobbiamo passare al thread sia l'FD della socket sia la struttura dati che contiene i chunk
             indice_assegnazione_chunk++; //dovrebbe arrivara a (MAX_CLIENT-1) .... Controllare
         }else{
             //Entriamo qua se numero_chunk è -1, questo significa che vi sarà una distribuzione non proporzionale dei chunk tra i client connessi
@@ -127,6 +128,7 @@ int main(){
                     indice_assegnazione_chunk++;
                     //pthread_create
             }else{
+                printf("Siamo in Chunk_Per_Client uguale a -1\n");
                 //numero chunk maggiore di MAX_ClIENT
                 int numero_di_chunk_da_assegnare_al_client=numero_chunk/MAX_CLIENT; //Esempio (11 chunk , 3 client)-> 11/3 = 3
                 int resto=numero_chunk%MAX_CLIENT; //il resto lo assegnamo al primo chunk
@@ -135,6 +137,8 @@ int main(){
                     S_Chunk[indice_assegnazione_chunk].fd=client_fd;
                     S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(S_Chunk[indice_assegnazione_chunk].numero_chunk*(sizeof(char *)));
                     for(int i=0;i<S_Chunk[indice_assegnazione_chunk].numero_chunk;i++){
+                        printf("siamo prima di strcpy\n");
+                        S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i] = malloc(strlen(Collezione_chunk[indice_Di_Redistribuzione]) + 1); // +1 per '\0'
                         strcpy(S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i],Collezione_chunk[indice_Di_Redistribuzione]);
                         indice_Di_Redistribuzione++;
                     }
@@ -143,13 +147,15 @@ int main(){
                     S_Chunk[indice_assegnazione_chunk].fd=client_fd;
                     S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(S_Chunk[indice_assegnazione_chunk].numero_chunk*(sizeof(char *)));
                     for(int i=0;i<S_Chunk[indice_assegnazione_chunk].numero_chunk;i++){
+                        S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i] = malloc(strlen(Collezione_chunk[indice_Di_Redistribuzione]) + 1); // +1 per '\0'
                         strcpy(S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i],Collezione_chunk[indice_Di_Redistribuzione]);
                         indice_Di_Redistribuzione++;
                  }                                                                   
 
                 
             }
-            pthread_create(thread[contatore_thread],NULL,funzioneThread(),&S_Chunk[indice_assegnazione_chunk]);
+            printf("siamo prima della pthread_create\n");
+            pthread_create(&thread[contatore_thread],NULL,FunzioneThread,&S_Chunk[indice_assegnazione_chunk]);
             indice_assegnazione_chunk++;
             }
         }

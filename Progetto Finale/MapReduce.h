@@ -15,4 +15,6 @@ void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk);
 
 void StampaChunk(char ** Collezione_chunk, int numero_chunk);
 
+void* FunzioneThread(void* args);
+
 #endif
