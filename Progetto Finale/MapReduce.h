@@ -9,6 +9,11 @@ typedef struct{
     char ** Array_Di_Chunk;
 }Struttura_Chunk;
 
+typedef struct {
+    char *parola;
+    int contatore;
+} WordCount;
+
 void chunk(char*** collezione_chunk,int *numero_chunk);
 
 void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk);
@@ -16,5 +21,7 @@ void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk);
 void StampaChunk(char ** Collezione_chunk, int numero_chunk);
 
 void* FunzioneThread(void* args);
+
+char Map(char **array);
 
 #endif

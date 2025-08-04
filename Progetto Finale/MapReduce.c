@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/socket.h>
 #include "MapReduce.h" 
 
 //funzione eseguita da ogni thread
@@ -11,9 +12,22 @@
 
 
 
-void* FunzioneThread(void* args){
-    printf("ciao\n");
+void *FunzioneThread(void *arg) {
+    Struttura_Chunk *mio_chunk = (Struttura_Chunk *)arg;
 
+    for (int i = 0; i < mio_chunk->numero_chunk; i++) {
+        size_t len = strlen(mio_chunk->Array_Di_Chunk[i]);
+        ssize_t sent = send(mio_chunk->fd, mio_chunk->Array_Di_Chunk[i], len, 0);
+        if (sent < 0) {
+            perror("Errore durante send");
+            break;
+        } else {
+            printf("Inviato chunk %d: %zd byte\n", i, sent);
+        }
+    }
+
+    close(mio_chunk->fd);
+    pthread_exit(NULL);
 }
 
 

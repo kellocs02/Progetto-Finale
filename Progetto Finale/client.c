@@ -10,12 +10,12 @@
 
 #define SERVER_IP "127.0.0.1"   // IP del server
 #define SERVER_PORT 8080       // Porta del server
-#define BUFFER_SIZE 1024
+
 
 int main() {
     int sockfd;
     struct sockaddr_in server_addr;
-    char buffer[BUFFER_SIZE];
+    char buffer[DIM_CHUNK];
     char messaggio[] = "Ciao, server!\n";
 
     // 1. Creazione socket
@@ -49,10 +49,14 @@ int main() {
     send(sockfd, messaggio, strlen(messaggio), 0);
 
     // 5. Ricezione della risposta
-    int n = recv(sockfd, buffer, BUFFER_SIZE - 1, 0);
+    //possiamo ricevere più chunk
+    //dobbiamo gestire ogni chunk ricevuto
+    //dobbiamo modulare i tempi di invio e di ricezione dei chunk
+    int n = recv(sockfd, buffer, DIM_CHUNK - 1, 0);
     if (n > 0) {
         buffer[n] = '\0';  // Aggiungi terminatore di stringa
         printf("Risposta dal server: %s\n", buffer);
+        Map(buffer);
     } else if (n == 0) {
         printf("Connessione chiusa dal server.\n");
     } else {
