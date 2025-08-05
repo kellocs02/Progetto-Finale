@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wextra -pthread
 
 # File sorgenti
 SRCS_MAIN = main.c MapReduce.c
-SRCS_CLIENT = client.c
+SRCS_CLIENT = client.c MapReduceClient.c
 
 # File oggetto
 OBJS_MAIN = $(SRCS_MAIN:.c=.o)
@@ -25,12 +25,13 @@ $(TARGET_MAIN): $(OBJS_MAIN)
 $(TARGET_CLIENT): $(OBJS_CLIENT)
 	$(CC) $(CFLAGS) -o $@ $^
 
-# Regola generica per compilare .o da .c (senza obbligo di .h)
+# Regola generica per compilare .o da .c
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Pulizia
 clean:
 	rm -f *.o $(TARGET_MAIN) $(TARGET_CLIENT)
+
 
 

@@ -9,7 +9,7 @@
 #include "MapReduce.h" //file di libreria del progetto
 
 #define PORTA 8080
-#define MAX_CLIENT 3
+
 
 //il primo passo è quello di prendere il file e suddividerlo in chunk da 512 byte
 //Essendo che eseguendo una divisione netta potremmo tagliare una parola a metà

@@ -53,10 +53,16 @@ int main() {
     //dobbiamo gestire ogni chunk ricevuto
     //dobbiamo modulare i tempi di invio e di ricezione dei chunk
     int n = recv(sockfd, buffer, DIM_CHUNK - 1, 0);
+
     if (n > 0) {
         buffer[n] = '\0';  // Aggiungi terminatore di stringa
         printf("Risposta dal server: %s\n", buffer);
-        Map(buffer);
+        WordCount *contatore_parole=Map(buffer);//ho un puntatore che contiene l'indirizzo dell'area di memoria in cui sono salvate tutte le parole
+        printf("contatore: %d, parola:%s \n",contatore_parole[0].contatore,contatore_parole[0].parola);
+        printf("siamo dopo WorldCount\n");
+        if (send(sockfd, contatore_parole, sizeof(WordCount), 0) < 0) {
+            perror("Errore durante send");
+        }
     } else if (n == 0) {
         printf("Connessione chiusa dal server.\n");
     } else {

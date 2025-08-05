@@ -23,11 +23,11 @@ int Controllo(char *buffer,WordCount* contatore_parole, int lunghezza_contatore)
     return 0; //restituiamo 0 se nella struttura non è presente la parola
 }
 
-WordCount* Map(char* array){
+Blocco_Parole Map(char* array){
     int capacità = INIZIALE; //rappresenta lo spazio allocato
     WordCount *contatore_parole = malloc(capacità * sizeof(WordCount));
     int lunghezza_contatore=0;
-    char buffer[30];                               //buffer per contenere le parole temporanee per la fase di elaborazione 
+    char buffer[100];                               //buffer per contenere le parole temporanee per la fase di elaborazione 
     for(int i=0;array[i]!='\0';i++){
         int j=0; //scorriamo l'array fino alla fine
         while(array[i]!=' ' && array[i]!='\0'){ //scorriamo le parole dell'array fino a trovare uno spazio e nel frattempo riempiamo il buffer temporale
@@ -54,5 +54,6 @@ WordCount* Map(char* array){
         }
 
     }
-    return contatore_parole;
+    Blocco_Parole blocco={lunghezza_contatore,contatore_parole};
+    return blocco;
 }

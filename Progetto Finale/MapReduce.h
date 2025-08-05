@@ -2,6 +2,13 @@
 #define MAPREDUCE_H
 
 #define DIM_CHUNK  262200 //circa 256 kb
+#define MAX_CLIENT 3
+
+typedef struct{
+    int lunghezza_contatore;
+    WordCount* struttura_parole;
+}Blocco_Parole;
+
 
 typedef struct{
     int fd;
@@ -22,6 +29,6 @@ void StampaChunk(char ** Collezione_chunk, int numero_chunk);
 
 void* FunzioneThread(void* args);
 
-char Map(char **array);
+WordCount *Map(char *buffer);
 
 #endif

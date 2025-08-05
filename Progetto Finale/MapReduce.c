@@ -10,11 +10,22 @@
 //Attraverso essa dobbiamo inviare i chunk al client
 //il client dovrà occupparsi delle operazioni di elaborazione di quest'ultimi
 
-
+pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+int variabile_condivisa=0;
 
 void *FunzioneThread(void *arg) {
+    WordCount ricevuto;
     Struttura_Chunk *mio_chunk = (Struttura_Chunk *)arg;
-
+    //meccanismo di barriera
+    pthread_mutex_lock(&mutex); //prendiamo possesso del lock
+    variabile_condivisa++; 
+    if(variabile_condivisa<MAX_CLIENT){
+        pthread_cond_wait(&cond,&mutex);//il thread si blocca e rilascia il mutex
+    }else{
+        pthread_cond_broadcast(&cond);//sveglia tutti i thread in attesa
+    }
+    pthread_mutex_unlock(&mutex);  
     for (int i = 0; i < mio_chunk->numero_chunk; i++) {
         size_t len = strlen(mio_chunk->Array_Di_Chunk[i]);
         ssize_t sent = send(mio_chunk->fd, mio_chunk->Array_Di_Chunk[i], len, 0);
@@ -25,7 +36,10 @@ void *FunzioneThread(void *arg) {
             printf("Inviato chunk %d: %zd byte\n", i, sent);
         }
     }
-
+    while (recv(mio_chunk->fd, &ricevuto, sizeof(WordCount), 0) > 0) {
+        ricevuto.contatore = ntohl(ricevuto.contatore); // conversione per il formato di rete
+        printf("Ricevuto: %s -> %d\n", ricevuto.parola, ricevuto.contatore);
+    }
     close(mio_chunk->fd);
     pthread_exit(NULL);
 }
