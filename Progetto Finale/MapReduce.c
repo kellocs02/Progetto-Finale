@@ -14,6 +14,77 @@ pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int variabile_condivisa=0;
 
+WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
+    WordCount* w=malloc(4*sizeof(WordCount)); //alloco inzialmente 4 spazi 
+    int indice=0; //l'indice tiene conto della posizone in cui salveremo la prossima stuct worldcount
+    int capienza=4; //la capienza tiene conto dello spazio allocato 
+    while(1){
+        int len_net;
+        int cont_net;
+        int n;
+
+        n=recv(mio_chunk->fd,&len_net, sizeof(len_net), 0); //riceviamo la lunghezza della parola
+        if (n == 0) break; // connessione chiusa
+        if (n <= 0) {
+            perror("recv len");
+            break;
+        }
+
+        int len = ntohl(len_net);
+        if (len <= 0 || len > MAX_PAROLA) {
+            fprintf(stderr, "Lunghezza parola non valida: %d\n", len);
+            break;
+        }
+
+        char *parola = malloc(len);
+        if (!parola) {
+            perror("malloc parola");
+            break;
+        }
+
+        int ricevuti = 0;
+        while (ricevuti < len) {
+            //len - ricevuti è quanti byte mancano ancora da leggere.
+            int r = recv(mio_chunk->fd, parola + ricevuti, len - ricevuti, 0); //parola + ricevuti è un puntatore che punta al primo byte libero del buffer dove stai salvando la parola. Ad esempio: se hai già ricevuto 3 byte, scrivi a partire dal 4° byte del buffer.
+            if (r <= 0) {
+                perror("recv parola");
+                free(parola);
+                break;
+            }
+            ricevuti += r;
+        }
+        
+        //ricevo il contatore della singola parola
+        n = recv(mio_chunk->fd, &cont_net, sizeof(cont_net), 0);
+        if (n <= 0) {
+            perror("recv contatore");
+            free(parola);
+            break;
+        }
+        
+        //converto nel formato della macchina
+        int contatore = ntohl(cont_net);
+        if(indice<capienza){
+            w[indice].parola=parola;
+            w[indice].contatore=contatore;
+            indice++;
+        }else{
+            capienza+=10; //aumento la capienza di 10
+            w=realloc(w,capienza*sizeof(WordCount)); //allochiamo altro spazio per w
+            if (!w) {
+                perror("realloc");
+                free(parola);
+                break;
+            }
+            w[indice].parola=parola;
+            w[indice].contatore=contatore;
+            indice++;
+        }
+        
+    return w;
+    }
+}
+
 void *FunzioneThread(void *arg) {
     WordCount ricevuto;
     Struttura_Chunk *mio_chunk = (Struttura_Chunk *)arg;
@@ -36,10 +107,7 @@ void *FunzioneThread(void *arg) {
             printf("Inviato chunk %d: %zd byte\n", i, sent);
         }
     }
-    while (recv(mio_chunk->fd, &ricevuto, sizeof(WordCount), 0) > 0) {
-        ricevuto.contatore = ntohl(ricevuto.contatore); // conversione per il formato di rete
-        printf("Ricevuto: %s -> %d\n", ricevuto.parola, ricevuto.contatore);
-    }
+    WordCount* w=Gestisci_Ricezione(mio_chunk);
     close(mio_chunk->fd);
     pthread_exit(NULL);
 }

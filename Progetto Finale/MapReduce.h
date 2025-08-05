@@ -3,6 +3,7 @@
 
 #define DIM_CHUNK  262200 //circa 256 kb
 #define MAX_CLIENT 3
+#define MAX_PAROLA 1024
 
 typedef struct{
     int lunghezza_contatore;
@@ -29,6 +30,6 @@ void StampaChunk(char ** Collezione_chunk, int numero_chunk);
 
 void* FunzioneThread(void* args);
 
-WordCount *Map(char *buffer);
+Blocco_Parole Map(char *buffer);
 
 #endif

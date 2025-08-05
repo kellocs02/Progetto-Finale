@@ -57,16 +57,23 @@ int main() {
     if (n > 0) {
         buffer[n] = '\0';  // Aggiungi terminatore di stringa
         printf("Risposta dal server: %s\n", buffer);
-        WordCount *contatore_parole=Map(buffer);//ho un puntatore che contiene l'indirizzo dell'area di memoria in cui sono salvate tutte le parole
-        printf("contatore: %d, parola:%s \n",contatore_parole[0].contatore,contatore_parole[0].parola);
+        Blocco_Parole blocco=Map(buffer);//ho un puntatore che contiene l'indirizzo dell'area di memoria in cui sono salvate tutte le parole
+        printf("contatore: %d, parola:%s \n",blocco.lunghezza_contatore,blocco.struttura_parole[0]->parola);
         printf("siamo dopo WorldCount\n");
-        if (send(sockfd, contatore_parole, sizeof(WordCount), 0) < 0) {
-            perror("Errore durante send");
+        for (int i = 0; i < blocco.lunghezza_contatore; i++) {
+            WordCount *w = &blocco.struttura_parole[i];
+            
+            int len = strlen(w->parola) + 1;
+            int len_net = htonl(len);
+            int cont_net = htonl(w->contatore);
+        
+            // 1. Invia lunghezza parola
+            send(sockfd, &len_net, sizeof(len_net), 0);
+            // 2. Invia la parola
+            send(sockfd, w->parola, len, 0);
+            // 3. Invia il contatore
+            send(sockfd, &cont_net, sizeof(cont_net), 0);
         }
-    } else if (n == 0) {
-        printf("Connessione chiusa dal server.\n");
-    } else {
-        perror("Errore nella ricezione");
     }
 
     // 6. Chiusura della connessione
