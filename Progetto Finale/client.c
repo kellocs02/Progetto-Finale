@@ -16,7 +16,6 @@ int main() {
     int sockfd;
     struct sockaddr_in server_addr;
     char buffer[DIM_CHUNK];
-    char messaggio[] = "Ciao, server!\n";
 
     // 1. Creazione socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -45,39 +44,78 @@ int main() {
 
     printf("Connesso al server %s:%d\n", SERVER_IP, SERVER_PORT);
 
-    // 4. Invio del messaggio al server
-    send(sockfd, messaggio, strlen(messaggio), 0);
 
     // 5. Ricezione della risposta
-    //possiamo ricevere più chunk
-    //dobbiamo gestire ogni chunk ricevuto
-    //dobbiamo modulare i tempi di invio e di ricezione dei chunk
     int n = recv(sockfd, buffer, DIM_CHUNK - 1, 0);
+    if (n <= 0) {
+        if (n == 0) 
+            fprintf(stderr, "Connessione chiusa dal server prima di ricevere dati.\n");
+        else 
+            perror("recv fallita");
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
 
-    if (n > 0) {
-        buffer[n] = '\0';  // Aggiungi terminatore di stringa
-        printf("Risposta dal server: %s\n", buffer);
-        Blocco_Parole blocco=Map(buffer);//ho un puntatore che contiene l'indirizzo dell'area di memoria in cui sono salvate tutte le parole
-        printf("contatore: %d, parola:%s \n",blocco.lunghezza_contatore,blocco.struttura_parole[0]->parola);
-        printf("siamo dopo WorldCount\n");
-        for (int i = 0; i < blocco.lunghezza_contatore; i++) {
-            WordCount *w = &blocco.struttura_parole[i];
-            
-            int len = strlen(w->parola) + 1;
-            int len_net = htonl(len);
-            int cont_net = htonl(w->contatore);
-        
-            // 1. Invia lunghezza parola
-            send(sockfd, &len_net, sizeof(len_net), 0);
-            // 2. Invia la parola
-            send(sockfd, w->parola, len, 0);
-            // 3. Invia il contatore
-            send(sockfd, &cont_net, sizeof(cont_net), 0);
+    buffer[n] = '\0';  // Aggiungi terminatore di stringa
+
+    Blocco_Parole blocco = Map(buffer);
+
+    printf("ATTENTO QUA contatore: %d, parola: %s\n", blocco.lunghezza_contatore, blocco.struttura_parole[0].parola);
+    printf("Contatore: %d\n", blocco.lunghezza_contatore);
+
+    printf("siamo prima del ciclo di invio \n");
+
+    for (int i = 0; i < blocco.lunghezza_contatore; i++) {
+        WordCount *w = &blocco.struttura_parole[i];
+
+        int len = strlen(w->parola) + 1; // include terminatore \0
+        int len_net = htonl(len);
+        int cont_net = htonl(w->contatore);
+
+        printf("lunghezza parola con terminatore: %d, parola: %s\n", len, w->parola);
+
+        // 1. Invio lunghezza parola
+        ssize_t bytes_inviati = 0;
+        while (bytes_inviati < (ssize_t)sizeof(len_net)) {
+            ssize_t r = send(sockfd, ((char*)&len_net) + bytes_inviati, sizeof(len_net) - bytes_inviati, 0);
+            if (r <= 0) {
+                perror("send fallita lunghezza parola");
+                goto fine;
+            }
+            bytes_inviati += r;
+        }
+
+        if (w->parola == NULL) {
+            fprintf(stderr, "ERRORE: parola NULL a indice %d\n", i);
+            continue;
+        }
+
+        printf("Sto per inviare: %s (contatore: %d)\n", w->parola, w->contatore);
+
+        // 2. Invio parola (stringa)
+        bytes_inviati = 0;
+        while (bytes_inviati < (ssize_t)len) {
+            ssize_t r = send(sockfd, w->parola + bytes_inviati, len - bytes_inviati, 0);
+            if (r <= 0) {
+                perror("send fallita parola");
+                goto fine;
+            }
+            bytes_inviati += r;
+        }
+
+        // 3. Invio contatore
+        bytes_inviati = 0;
+        while (bytes_inviati < (ssize_t)sizeof(cont_net)) {
+            ssize_t r = send(sockfd, ((char*)&cont_net) + bytes_inviati, sizeof(cont_net) - bytes_inviati, 0);
+            if (r <= 0) {
+                perror("send fallita contatore");
+                goto fine;
+            }
+            bytes_inviati += r;
         }
     }
 
-    // 6. Chiusura della connessione
+fine:
     close(sockfd);
-
     return 0;
 }

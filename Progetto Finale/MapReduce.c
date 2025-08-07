@@ -4,6 +4,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 #include "MapReduce.h" 
 
 //funzione eseguita da ogni thread
@@ -15,75 +16,92 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int variabile_condivisa=0;
 
 WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
-    WordCount* w=malloc(4*sizeof(WordCount)); //alloco inzialmente 4 spazi 
-    int indice=0; //l'indice tiene conto della posizone in cui salveremo la prossima stuct worldcount
-    int capienza=4; //la capienza tiene conto dello spazio allocato 
+    printf("siamo in gestisci Ricezione\n");
+    WordCount* w = malloc(4 * sizeof(WordCount)); // spazio iniziale
+    if (!w) {
+        perror("malloc iniziale fallita");
+        return NULL;
+    }
+    int indice = 0;
+    int capienza = 4;
+
     while(1){
         int len_net;
         int cont_net;
-        int n;
 
-        n=recv(mio_chunk->fd,&len_net, sizeof(len_net), 0); //riceviamo la lunghezza della parola
-        if (n == 0) break; // connessione chiusa
-        if (n <= 0) {
-            perror("recv len");
-            break;
+        // Ricevi esattamente sizeof(len_net) byte per la lunghezza parola
+        size_t ricevuti = 0;
+        while (ricevuti < sizeof(len_net)) { //ricevuti deve essere minore di 4 byte, poichè len_net è un intero
+            int r = recv(mio_chunk->fd, ((char*)&len_net) + ricevuti, sizeof(len_net) - ricevuti, 0);
+            if (r <= 0) { //succede se il client chiude la connessione con closefd
+                if (r == 0) printf("Connessione chiusa dal peer\n");
+                else perror("recv len_net");
+                goto fine;
+            }
+            ricevuti += r; //per ogni byte ricevuto incremento ricevuti
         }
 
-        int len = ntohl(len_net);
+        size_t len = (size_t) ntohl(len_net);
+        printf("lunghezza della parola: %zu\n", len);
         if (len <= 0 || len > MAX_PAROLA) {
-            fprintf(stderr, "Lunghezza parola non valida: %d\n", len);
-            break;
+            fprintf(stderr, "Lunghezza parola non valida: %zu\n", len);
+            goto fine;
         }
 
         char *parola = malloc(len);
         if (!parola) {
             perror("malloc parola");
-            break;
+            goto fine;
         }
 
-        int ricevuti = 0;
+        // Ricevi esattamente len byte per la parola
+        ricevuti = 0;
         while (ricevuti < len) {
-            //len - ricevuti è quanti byte mancano ancora da leggere.
-            int r = recv(mio_chunk->fd, parola + ricevuti, len - ricevuti, 0); //parola + ricevuti è un puntatore che punta al primo byte libero del buffer dove stai salvando la parola. Ad esempio: se hai già ricevuto 3 byte, scrivi a partire dal 4° byte del buffer.
+            int r = recv(mio_chunk->fd, parola + ricevuti, len - ricevuti, 0);
             if (r <= 0) {
                 perror("recv parola");
                 free(parola);
-                break;
+                goto fine;
             }
             ricevuti += r;
         }
-        
-        //ricevo il contatore della singola parola
-        n = recv(mio_chunk->fd, &cont_net, sizeof(cont_net), 0);
-        if (n <= 0) {
-            perror("recv contatore");
-            free(parola);
-            break;
+
+        // Ricevi esattamente sizeof(cont_net) byte per il contatore
+        ricevuti = 0;
+        while (ricevuti < sizeof(cont_net)) {
+            int r = recv(mio_chunk->fd, ((char*)&cont_net) + ricevuti, sizeof(cont_net) - ricevuti, 0);
+            if (r <= 0) {
+                perror("recv cont_net");
+                free(parola);
+                goto fine;
+            }
+            ricevuti += r;
         }
-        
-        //converto nel formato della macchina
+
         int contatore = ntohl(cont_net);
-        if(indice<capienza){
-            w[indice].parola=parola;
-            w[indice].contatore=contatore;
-            indice++;
-        }else{
-            capienza+=10; //aumento la capienza di 10
-            w=realloc(w,capienza*sizeof(WordCount)); //allochiamo altro spazio per w
-            if (!w) {
+
+        if (indice >= capienza) {
+            capienza += 10;
+            WordCount* tmp = realloc(w, capienza * sizeof(WordCount));
+            if (!tmp) {
                 perror("realloc");
                 free(parola);
-                break;
+                goto fine;
             }
-            w[indice].parola=parola;
-            w[indice].contatore=contatore;
-            indice++;
+            w = tmp;
         }
-        
-    return w;
+
+        w[indice].parola = parola;
+        w[indice].contatore = contatore;
+        indice++;
     }
+
+fine:
+    // opzionale: puoi restituire un array tagliato a misura o anche solo la dimensione,
+    // ma per ora ritorniamo semplicemente w
+    return w;
 }
+
 
 void *FunzioneThread(void *arg) {
     WordCount ricevuto;
@@ -107,7 +125,9 @@ void *FunzioneThread(void *arg) {
             printf("Inviato chunk %d: %zd byte\n", i, sent);
         }
     }
+    printf("SIAMo DOPO IL FOR IN FUNZIONE THREAD, STIAMO PER INVOCARE GESTISCI RICEZIONE\n");
     WordCount* w=Gestisci_Ricezione(mio_chunk);
+    printf("stringa: %s\n",w->parola);
     close(mio_chunk->fd);
     pthread_exit(NULL);
 }

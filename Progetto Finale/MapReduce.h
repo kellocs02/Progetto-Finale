@@ -5,11 +5,6 @@
 #define MAX_CLIENT 3
 #define MAX_PAROLA 1024
 
-typedef struct{
-    int lunghezza_contatore;
-    WordCount* struttura_parole;
-}Blocco_Parole;
-
 
 typedef struct{
     int fd;
@@ -21,6 +16,11 @@ typedef struct {
     char *parola;
     int contatore;
 } WordCount;
+
+typedef struct{
+    int lunghezza_contatore;
+    WordCount* struttura_parole;
+}Blocco_Parole;
 
 void chunk(char*** collezione_chunk,int *numero_chunk);
 

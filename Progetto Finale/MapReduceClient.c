@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <ctype.h>
+#include <arpa/inet.h>
 #include "MapReduce.h" 
 
 #define INIZIALE 4
@@ -23,37 +24,63 @@ int Controllo(char *buffer,WordCount* contatore_parole, int lunghezza_contatore)
     return 0; //restituiamo 0 se nella struttura non è presente la parola
 }
 
-Blocco_Parole Map(char* array){
-    int capacità = INIZIALE; //rappresenta lo spazio allocato
+Blocco_Parole Map(char* array) {
+    int capacità = INIZIALE;
     WordCount *contatore_parole = malloc(capacità * sizeof(WordCount));
-    int lunghezza_contatore=0;
-    char buffer[100];                               //buffer per contenere le parole temporanee per la fase di elaborazione 
-    for(int i=0;array[i]!='\0';i++){
-        int j=0; //scorriamo l'array fino alla fine
-        while(array[i]!=' ' && array[i]!='\0'){ //scorriamo le parole dell'array fino a trovare uno spazio e nel frattempo riempiamo il buffer temporale
-            if(isupper(array[i])){
-                buffer[j]=tolower(array[i]); //se la lettera è maiuscola la salviamo in formato minuscolo
-            }else{
-                buffer[j]=array[i]; //riempiamo il buffer
-            }
+    if (!contatore_parole) {
+        perror("malloc fallita");
+        exit(EXIT_FAILURE);
+    }
+
+    int lunghezza_contatore = 0;
+    char buffer[100];
+
+    for (int i = 0; array[i] != '\0'; ) {
+        int j = 0;
+
+        // Salta tutti i caratteri non validi (spazi, punteggiatura)
+        while (array[i] != '\0' && !isalnum(array[i])) {
             i++;
-            j++; 
-            }
-        
-        buffer[j] = '\0';
-        if(Controllo(buffer,contatore_parole,lunghezza_contatore)==0){//verifichiamo se la parola è presente in contatore parole
-            lunghezza_contatore++;
-            //parola non presente, la dobbiamo aggiungere
-            if (lunghezza_contatore == capacità) {
-                capacità *= 2; // Raddoppi lo spazio
-                contatore_parole = realloc(contatore_parole, capacità * sizeof(WordCount));
-            }
-            //abbiamo aggiunto un blocco alla struttura
-            contatore_parole[lunghezza_contatore-1].parola = strdup(buffer); //copiamo la nuova parola nell'ulitma cella della struttura
-            contatore_parole[lunghezza_contatore-1].contatore=1;  
         }
 
+        // Costruisci la parola con soli caratteri alfanumerici
+        while (array[i] != '\0' && isalnum(array[i])) {
+            buffer[j++] = tolower(array[i]);
+            i++;
+        }
+
+        buffer[j] = '\0';
+
+        // Evita parole vuote
+        if (j == 0) {
+            continue;
+        }
+
+        // Se la parola non è già presente
+        if (Controllo(buffer, contatore_parole, lunghezza_contatore) == 0) {
+            if (lunghezza_contatore == capacità) {
+                capacità *= 2;
+                WordCount *tmp = realloc(contatore_parole, capacità * sizeof(WordCount));
+                if (!tmp) {
+                    perror("realloc fallita");
+                    exit(EXIT_FAILURE);
+                }
+                contatore_parole = tmp;
+            }
+
+            char *copia = strdup(buffer);
+            if (!copia) {
+                perror("strdup fallita");
+                exit(EXIT_FAILURE);
+            }
+
+            contatore_parole[lunghezza_contatore].parola = copia;
+            contatore_parole[lunghezza_contatore].contatore = 1;
+            lunghezza_contatore++;
+        }
     }
-    Blocco_Parole blocco={lunghezza_contatore,contatore_parole};
+
+    Blocco_Parole blocco = { lunghezza_contatore, contatore_parole };
     return blocco;
 }
+
