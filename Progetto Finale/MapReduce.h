@@ -32,4 +32,6 @@ void* FunzioneThread(void* args);
 
 Blocco_Parole Map(char *buffer);
 
+void* Reduce(WordCount* risultati);
+
 #endif

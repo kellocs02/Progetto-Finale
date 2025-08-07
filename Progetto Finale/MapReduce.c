@@ -15,6 +15,10 @@ pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int variabile_condivisa=0;
 
+void* Reduce(WordCount* risultati){
+    printf("Siamo in reduce\n");
+}
+
 WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
     printf("siamo in gestisci Ricezione\n");
     WordCount* w = malloc(4 * sizeof(WordCount)); // spazio iniziale
@@ -127,10 +131,24 @@ void *FunzioneThread(void *arg) {
     }
     printf("SIAMo DOPO IL FOR IN FUNZIONE THREAD, STIAMO PER INVOCARE GESTISCI RICEZIONE\n");
     WordCount* w=Gestisci_Ricezione(mio_chunk);
-    printf("stringa: %s\n",w->parola);
-    close(mio_chunk->fd);
-    pthread_exit(NULL);
+    printf("FD:%d,stringa: %s\n",mio_chunk->fd,w->parola);
+    int chiusura=close(mio_chunk->fd);
+    if(chiusura==-1){
+        perror("Errore nella chiusura di fd");
+    }else{
+        printf("Chiusura della connessione col client avvenuta col successore, FD->%d\n",mio_chunk->fd);
+    }
+    printf("Connessione chiusa col client\n");
+    pthread_exit(w);
 }
+
+
+
+
+
+
+
+
 
 
 
@@ -215,8 +233,9 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
         memcpy(chunk, buffer, lunghezza_chunk);    //copiamo effettivamente i dati
         chunk[lunghezza_chunk] = '\0';             //pongo il terminatore
         //printf("chunk1: %s\n",chunk);
-        sleep(2);
+        sleep(1);
         //printf("Contenuto letto: '%.*s'\n", (int)n, buffer);
+        //aggiungiamo il chunk alla collezione
         salva_chunk(collezione_chunk, chunk, numero_chunk);
         printf("siamo dopo salva_chunk\n");
         free(chunk); //libero lo spazio in memoria
@@ -230,7 +249,8 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
             fseek(f, -indietro, SEEK_CUR);
         }
     }
-
+    char *ultimo = collezione_chunk[*numero_chunk - 1];
+    (*collezione_chunk)[*numero_chunk-1]=realloc((*collezione_chunk)[*numero_chunk-1],sizeof((*collezione_chunk)[*numero_chunk]))
     free(buffer);
     fclose(f);
     return;

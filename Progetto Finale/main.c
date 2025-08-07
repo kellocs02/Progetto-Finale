@@ -18,6 +18,7 @@
 int indice_assegnazione_chunk=0; //rappresenta il client
 
 int main(){
+    WordCount* risultati[MAX_CLIENT]; //mettiamo i valori di ritorno dei thread
     printf("ciao\n");
     printf("Inizio Programma\n");
     pthread_t thread[MAX_CLIENT]; //creiamo il pool di thread
@@ -91,7 +92,8 @@ int main(){
     //quando un client si connette la socket di ascolto continua ad ascoltare per altre connessioni
     //quindi per ogni client che si connette dobbiamo creare un thread
     //se gestissimo i client connessi nel thread principale si bloccherebbe tutto
-    while(1){
+    Struttura_Chunk *S_Chunk= malloc(MAX_CLIENT*(sizeof(Struttura_Chunk))); //puntatore che punta all'area di memoria dove saranno allocate le strutture chunk
+    while(indice_assegnazione_chunk < MAX_CLIENT){
         int client_fd = accept(server_fd, (struct sockaddr*)&client_addr, &client_len);
         if (client_fd < 0) {
             perror("Errore nella accept");
@@ -103,7 +105,6 @@ int main(){
         //dobbiamo decidere come gestire le connessioni, se mettere un limite in base ai chunk. 
         //Cosa succede se abbiamo più chunk rispetto ai client connessi?
         //Cosa succede se abbiamo meno chunk rispetto ai client connessi?
-        Struttura_Chunk S_Chunk[MAX_CLIENT];
         printf("Abbiamo creato la struttura Chunk\n");
         if(Chunk_Per_Client!=-1){
             printf("Siamo in Chunk_Per_Client diverso da 1\n");
@@ -157,8 +158,18 @@ int main(){
             printf("siamo prima della pthread_create\n");
             pthread_create(&thread[contatore_thread],NULL,FunzioneThread,&S_Chunk[indice_assegnazione_chunk]);
             indice_assegnazione_chunk++;
+            contatore_thread++;
             }
         }
         
     }
+    printf("siamo usciti dal ciclo\n");
+    for (int i = 0; i < contatore_thread; i++) {
+        printf("siamo nell'ultimo for quello dei pthread_join\n");
+        void *ptr;
+        pthread_join(thread[i], &ptr); //il valore di ritorno del thread finisce in un puntatore
+        risultati[i] = (WordCount*)ptr;
+    }
+    Reduce(risultati); //passiamo un puntatore a WordCount che contiene tutte le strutture Wordcount
+
 }

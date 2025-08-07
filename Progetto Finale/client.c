@@ -72,7 +72,7 @@ int main() {
         int len_net = htonl(len);
         int cont_net = htonl(w->contatore);
 
-        printf("lunghezza parola con terminatore: %d, parola: %s\n", len, w->parola);
+        
 
         // 1. Invio lunghezza parola
         ssize_t bytes_inviati = 0;
@@ -90,7 +90,7 @@ int main() {
             continue;
         }
 
-        printf("Sto per inviare: %s (contatore: %d)\n", w->parola, w->contatore);
+        
 
         // 2. Invio parola (stringa)
         bytes_inviati = 0;
