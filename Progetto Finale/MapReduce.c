@@ -249,9 +249,34 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
             fseek(f, -indietro, SEEK_CUR);
         }
     }
-    char *ultimo = collezione_chunk[*numero_chunk - 1];
-    (*collezione_chunk)[*numero_chunk-1]=realloc((*collezione_chunk)[*numero_chunk-1],sizeof((*collezione_chunk)[*numero_chunk]))
+    //appena il file viene finito di leggere
+    char *penultimo = (*collezione_chunk)[(*numero_chunk) - 2];
+    char *ultimo = (*collezione_chunk)[(*numero_chunk) - 1];
+    
+    size_t nuova_lunghezza = strlen(penultimo) + 1 + strlen(ultimo) + 1;
+    
+    char *nuovo_penultimo = realloc(penultimo, nuova_lunghezza);
+    if (!nuovo_penultimo) {
+        perror("realloc fallita");
+        exit(EXIT_FAILURE);
+    }
+    
+    strcat(nuovo_penultimo, " ");
+    strcat(nuovo_penultimo, ultimo);
+    
+    (*collezione_chunk)[(*numero_chunk) - 2] = nuovo_penultimo;
+    
+    free((*collezione_chunk)[(*numero_chunk) - 1]);
+
+    (*numero_chunk)--;
+
+    sleep(5);
+    printf("CIAOOOOO\n");
+    sleep(10);
+    printf("UltimoOOOOOOOOOOOOOOOOOOOOOOOOOOO %s\n", (*collezione_chunk)[(*numero_chunk) - 1] );
+    sleep(5);
+    //(*collezione_chunk)[*numero_chunk-1]=realloc((*collezione_chunk)[*numero_chunk-1],sizeof((*collezione_chunk)[*numero_chunk]))
     free(buffer);
     fclose(f);
     return;
-}
+} 
