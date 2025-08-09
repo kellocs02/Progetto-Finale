@@ -15,9 +15,50 @@ pthread_mutex_t mutex=PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 int variabile_condivisa=0;
 
-void* Reduce(WordCount* risultati){
+WordCount* Reduce(WordCount** risultati) {
     printf("Siamo in reduce\n");
+
+    int capienza = 10; 
+    int size = 0; // elementi usati
+    WordCount* totale = malloc(capienza * sizeof(WordCount));
+
+    for (int i = 0; i < MAX_CLIENT; i++) {
+        for (int j = 0; risultati[i][j].parola != NULL; j++) {
+            char* parola = risultati[i][j].parola;
+            int cont = risultati[i][j].contatore;
+
+            //cerchiamo se la parola si trova già in totale
+            int trovata = 0;
+            for (int k = 0; k < size; k++) {
+                if (strcmp(totale[k].parola, parola) == 0) {
+                    totale[k].contatore += cont;
+                    trovata = 1;
+                    break;
+                }
+            }
+
+            //se la parola non è stata trovata la aggiungiamo
+            if (!trovata) {
+                // Se serve, aumentiamo capacità
+                if (size >= capienza) {
+                    capienza += 10;
+                    totale = realloc(totale, capienza * sizeof(WordCount));
+                }
+                totale[size].parola = strdup(parola);
+                totale[size].contatore = cont;
+                size++;
+            }
+        }
+    }
+    totale = realloc(totale, (size + 1) * sizeof(WordCount));
+    totale[size].parola = NULL;
+    totale[size].contatore = 0;
+
+    return totale;
 }
+
+
+
 
 WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
     printf("siamo in gestisci Ricezione\n");
@@ -101,8 +142,8 @@ WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
     }
 
 fine:
-    // opzionale: puoi restituire un array tagliato a misura o anche solo la dimensione,
-    // ma per ora ritorniamo semplicemente w
+    w[indice].parola = NULL;   //segnala la fine . L'ultimo elemento lo ponimao a NULL.
+    w[indice].contatore = 0;   
     return w;
 }
 

@@ -148,7 +148,7 @@ int main(){
                     S_Chunk[indice_assegnazione_chunk].fd=client_fd;
                     S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(S_Chunk[indice_assegnazione_chunk].numero_chunk*(sizeof(char *)));
                     for(int i=0;i<S_Chunk[indice_assegnazione_chunk].numero_chunk;i++){
-                        S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i] = malloc(strlen(Collezione_chunk[indice_Di_Redistribuzione]) + 1); // +1 per '\0'
+                        S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i] = malloc(strlen(Collezione_chunk[indice_Di_Redistribuzione]) + 1); 
                         strcpy(S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i],Collezione_chunk[indice_Di_Redistribuzione]);
                         indice_Di_Redistribuzione++;
                  }                                                                   
@@ -168,8 +168,15 @@ int main(){
         printf("siamo nell'ultimo for quello dei pthread_join\n");
         void *ptr;
         pthread_join(thread[i], &ptr); //il valore di ritorno del thread finisce in un puntatore
-        risultati[i] = (WordCount*)ptr;
+        risultati[i] = (WordCount*)ptr; //risultati è un array di struct di tipo wordcount
     }
-    Reduce(risultati); //passiamo un puntatore a WordCount che contiene tutte le strutture Wordcount
+    //printf("Risultati : %s ",risultati[0]->parola);
+    WordCount* risultato_finale=Reduce(risultati); //passiamo un puntatore a WordCount che contiene tutte le strutture Wordcount
+    printf("Fase di inizio Stampa dei risultati tra 5 secodni:\n");
+    sleep(5);
+    for(int i=0; risultato_finale[i].parola!=NULL;i++){
+        printf("Parola: %s, Contatore: %d\n",risultato_finale[i].parola,risultato_finale[i].contatore);
+    }
+    printf("Fine\n");
 
 }

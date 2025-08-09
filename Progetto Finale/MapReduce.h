@@ -2,7 +2,7 @@
 #define MAPREDUCE_H
 
 #define DIM_CHUNK  262200 //circa 256 kb
-#define MAX_CLIENT 3
+#define MAX_CLIENT 3  
 #define MAX_PAROLA 1024
 
 
@@ -32,6 +32,6 @@ void* FunzioneThread(void* args);
 
 Blocco_Parole Map(char *buffer);
 
-void* Reduce(WordCount* risultati);
+WordCount* Reduce(WordCount** risultati);
 
 #endif
