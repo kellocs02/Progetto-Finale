@@ -74,7 +74,7 @@ int main() {
 
         
 
-        // 1. Invio lunghezza parola
+        //Lunghezza della parola
         ssize_t bytes_inviati = 0;
         while (bytes_inviati < (ssize_t)sizeof(len_net)) {
             ssize_t r = send(sockfd, ((char*)&len_net) + bytes_inviati, sizeof(len_net) - bytes_inviati, 0);
@@ -92,7 +92,7 @@ int main() {
 
         
 
-        // 2. Invio parola (stringa)
+        // Stringa
         bytes_inviati = 0;
         while (bytes_inviati < (ssize_t)len) {
             ssize_t r = send(sockfd, w->parola + bytes_inviati, len - bytes_inviati, 0);
@@ -103,7 +103,7 @@ int main() {
             bytes_inviati += r;
         }
 
-        // 3. Invio contatore
+        // Contatore Parola
         bytes_inviati = 0;
         while (bytes_inviati < (ssize_t)sizeof(cont_net)) {
             ssize_t r = send(sockfd, ((char*)&cont_net) + bytes_inviati, sizeof(cont_net) - bytes_inviati, 0);
