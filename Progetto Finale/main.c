@@ -6,6 +6,7 @@
 #include <sys/socket.h>  // socket(), bind(), listen(), accept()
 #include <netinet/in.h>  // struct sockaddr_in
 #include <pthread.h>
+#include <time.h> 
 #include "MapReduce.h" //file di libreria del progetto
 
 #define PORTA 8080
@@ -18,17 +19,17 @@
 int indice_assegnazione_chunk=0; //rappresenta il client
 
 int main(){
+    printf("numero di client che si connetteranno %d\n",MAX_CLIENT);
     WordCount* risultati[MAX_CLIENT]; //mettiamo i valori di ritorno dei thread
-    printf("ciao\n");
     printf("Inizio Programma\n");
     pthread_t thread[MAX_CLIENT]; //creiamo il pool di thread
     int contatore_thread=0;
     int numero_chunk=0;
     printf("numero chunk: %d\n",numero_chunk);
-    char** Collezione_chunk=NULL;//Alloco lo spazio per contenere almeno un chunk
-    chunk(&Collezione_chunk,&numero_chunk);
-    printf("Prima di StampaChunk numero chunk: %d\n",numero_chunk);
-    StampaChunk(Collezione_chunk,numero_chunk);
+    char** Collezione_chunk=NULL;//creo l'array di chunk
+    chunk(&Collezione_chunk,&numero_chunk); //funzione che suddivide il file in chunk
+    //printf("Prima di StampaChunk numero chunk: %d\n",numero_chunk);
+    StampaChunk(Collezione_chunk,numero_chunk); 
     //Dopo questa istruzione abbiamo il numero di chunk
     for(int i=0; i<numero_chunk;i++){
         printf("Chunk %d: %s\n",i,Collezione_chunk[i]);
@@ -41,16 +42,19 @@ int main(){
     int Chunk_Per_Client=0;
     if(numero_chunk>MAX_CLIENT){
         if(numero_chunk%MAX_CLIENT==0){
+            printf("numero chunk : %d, MAX_CLIENT : %d\n",numero_chunk,MAX_CLIENT);
+            sleep(3);
             Chunk_Per_Client=numero_chunk/MAX_CLIENT;
         }else{
             Chunk_Per_Client=-1; //gestiamo in altro modo questa situazione
         }
     }
-
+    printf("Chunk per client : %d\n", Chunk_Per_Client);
+    sleep(3);
     //creiamo il server TCP
-    int server_fd, client_fd;
-    struct sockaddr_in server_addr, client_addr;
-    socklen_t client_len=sizeof(client_addr);
+    int server_fd, client_fd; //file descriptor per socket server e socket di comunicazione con client
+    struct sockaddr_in server_addr, client_addr; //struttura che contiene i dati della socket
+    socklen_t client_len=sizeof(client_addr); 
 
     //AF_INET-> IPv4
     //SOCK_STREAM → TCP
@@ -73,7 +77,7 @@ int main(){
         exit(EXIT_FAILURE);
     }
 
-    //mettiamo la socket in ascolto
+    //mettiamo la socket in ascolto  
     //Imponiamo (per ora) il massimo di client connessi al numero di chunk
     //ma non è la soluzione ottimale
     //se numero di chunk troppo elevato grandi rischi di gestione per il server
@@ -107,18 +111,19 @@ int main(){
         //Cosa succede se abbiamo meno chunk rispetto ai client connessi?
         printf("Abbiamo creato la struttura Chunk\n");
         if(Chunk_Per_Client!=-1){
-            printf("Siamo in Chunk_Per_Client diverso da 1\n");
+            printf("Siamo in Chunk_Per_Client diverso da -1\n");
             //se numero chunk è diverso da meno 1 vuol dire che avremo una redistribuzione dei chunk in modo proporzionale tra i client
              //dobbiamo creare un array di S_chunk perchè nel momento in cui passiamo il successivo chunk al seguente thread, se non creo l'array di chunk vi sarà una sovvrascrizione dell'area di memoria
             S_Chunk[indice_assegnazione_chunk].numero_chunk=Chunk_Per_Client;
-            S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(numero_chunk*(sizeof(char*)));//alloco lo spazio per contenere i chunk
+            S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk=malloc(Chunk_Per_Client*(sizeof(char*)));//alloco lo spazio per contenere i chunk
             S_Chunk[indice_assegnazione_chunk].fd=client_fd; //fd per la comunicazione col client
-            for(int i=0;i<numero_chunk;i++){
+            for(int i=0;i<S_Chunk[indice_assegnazione_chunk].numero_chunk;i++){
                 S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i] = malloc(strlen(Collezione_chunk[indice_Di_Redistribuzione]) + 1); // +1 per '\0'
                 strcpy(S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i],Collezione_chunk[indice_Di_Redistribuzione]);//copiamo i chunk nella struttura da chunk, così potremo passarla al pthread create
             }
             pthread_create(&thread[contatore_thread],NULL,FunzioneThread,&S_Chunk[indice_assegnazione_chunk]);//Dobbiamo passare al thread sia l'FD della socket sia la struttura dati che contiene i chunk
             indice_assegnazione_chunk++; //dovrebbe arrivara a (MAX_CLIENT-1) .... Controllare
+            contatore_thread++;
         }else{
             //Entriamo qua se numero_chunk è -1, questo significa che vi sarà una distribuzione non proporzionale dei chunk tra i client connessi
             if(numero_chunk<MAX_CLIENT){
@@ -150,15 +155,15 @@ int main(){
                     for(int i=0;i<S_Chunk[indice_assegnazione_chunk].numero_chunk;i++){
                         S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i] = malloc(strlen(Collezione_chunk[indice_Di_Redistribuzione]) + 1); 
                         strcpy(S_Chunk[indice_assegnazione_chunk].Array_Di_Chunk[i],Collezione_chunk[indice_Di_Redistribuzione]);
-                        indice_Di_Redistribuzione++;
+                        indice_Di_Redistribuzione++; 
                  }                                                                   
 
                 
             }
             printf("siamo prima della pthread_create\n");
-            pthread_create(&thread[contatore_thread],NULL,FunzioneThread,&S_Chunk[indice_assegnazione_chunk]);
-            indice_assegnazione_chunk++;
-            contatore_thread++;
+            pthread_create(&thread[contatore_thread],NULL,FunzioneThread,&S_Chunk[indice_assegnazione_chunk]); //creiamo il thread per il corrispettivo client
+            indice_assegnazione_chunk++; //aumentiamo il contatore per indicare la gestione del client successivo
+            contatore_thread++; //aumentiamo il contatore per il prossimo thread
             }
         }
         

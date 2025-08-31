@@ -25,58 +25,52 @@ int Controllo(char *buffer,WordCount* contatore_parole, int lunghezza_contatore)
 }
 
 Blocco_Parole Map(char* array) {
-    int capacità = INIZIALE;
-    WordCount *contatore_parole = malloc(capacità * sizeof(WordCount));
+    int capacità = INIZIALE; //spazio iniziale contatore parole
+    WordCount *contatore_parole = malloc(capacità * sizeof(WordCount)); //array che conterrà le parole e i contatori
     if (!contatore_parole) {
         perror("malloc fallita");
         exit(EXIT_FAILURE);
     }
-
-    int lunghezza_contatore = 0;
-    char buffer[100];
-
-    for (int i = 0; array[i] != '\0'; ) {
-        int j = 0;
-
-        // Salta tutti i caratteri non validi (spazi, punteggiatura)
-        while (array[i] != '\0' && !isalnum(array[i])) {
+    int lunghezza_contatore = 0; //tiene il conteggio delle parole uniche trovate
+    char buffer[100]; //buffer per costruire la parola
+    for (int i = 0; array[i] != '\0'; ) { //scorre la stringa fino al terminatore
+        int j = 0; //indice per riempire il buffer
+        while (array[i] != '\0' && !isalnum(array[i])) { //salta tutti i caratteri non alfanumerici, (spazi e punteggiatura)
             i++;
         }
-
-        // Costruisci la parola con soli caratteri alfanumerici
-        while (array[i] != '\0' && isalnum(array[i])) {
+        while (array[i] != '\0' && isalnum(array[i])) {//la parola trovata viene convertita in minuscolo
             buffer[j++] = tolower(array[i]);
             i++;
         }
 
-        buffer[j] = '\0';
+        buffer[j] = '\0'; //mettiamo il terminatore nella stringa del buffer
 
-        // Evita parole vuote
+        //se non abbiamo trovato una parola si va avanti(ciao,,,bello), j è il numero di caratteri copiati nel buffer
         if (j == 0) {
-            continue;
+            continue; //salta il resto del ciclo e ricomincia dall'inizio del for
         }
 
-        // Se la parola non è già presente
+        //se la parola non è presente nella nostra lista:
         if (Controllo(buffer, contatore_parole, lunghezza_contatore) == 0) {
-            if (lunghezza_contatore == capacità) {
-                capacità *= 2;
-                WordCount *tmp = realloc(contatore_parole, capacità * sizeof(WordCount));
+            if (lunghezza_contatore == capacità) { //controllo sullo spazio disponibile per l'immagazzinamento dei dati nell'array
+                capacità *= 2; //aumentiamo la capacità
+                WordCount *tmp = realloc(contatore_parole, capacità * sizeof(WordCount));//riallochiamo lo spazio
                 if (!tmp) {
                     perror("realloc fallita");
                     exit(EXIT_FAILURE);
                 }
-                contatore_parole = tmp;
+                contatore_parole = tmp;//facciamo puntare contatore_parole all'area di memoria di tmp
             }
 
-            char *copia = strdup(buffer);
+            char *copia = strdup(buffer);//alloca nell'heap la memoria per contenere la stringa contenuta in buffer, inoltre copia la parola in questa area di memoria
             if (!copia) {
                 perror("strdup fallita");
                 exit(EXIT_FAILURE);
             }
 
-            contatore_parole[lunghezza_contatore].parola = copia;
-            contatore_parole[lunghezza_contatore].contatore = 1;
-            lunghezza_contatore++;
+            contatore_parole[lunghezza_contatore].parola = copia; //immagazziniamo la parola nell'array
+            contatore_parole[lunghezza_contatore].contatore = 1; //impostaimo il contatore ad 1
+            lunghezza_contatore++; //aumentiamo il valore della variabile che tiene il conto delle parole trovate
         }
     }
 

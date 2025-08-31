@@ -2,7 +2,7 @@
 #define MAPREDUCE_H
 
 #define DIM_CHUNK  262200 //circa 256 kb
-#define MAX_CLIENT 3  
+#define MAX_CLIENT 2 
 #define MAX_PAROLA 1024
 
 

@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <time.h> 
 #include "MapReduce.h" 
 
 //funzione eseguita da ogni thread
@@ -17,23 +18,26 @@ int variabile_condivisa=0;
 
 WordCount* Reduce(WordCount** risultati) {
     printf("Siamo in reduce\n");
-
-    int capienza = 10; 
+    //printf("stampa cella 1 di risultati %s\n",risultati[0][0].parola);
+    sleep(5); 
+    int capienza = 10; //indica la grandezza della variabile totale, ossia quanti elementi può contenere
     int size = 0; // elementi usati
-    WordCount* totale = malloc(capienza * sizeof(WordCount));
+    WordCount* totale = malloc(capienza * sizeof(WordCount)); //variabile che immagazzina le parole con i relativi contatori
 
+    //iteriamo su MaxClient perchè avremo MaXclient in risultati
     for (int i = 0; i < MAX_CLIENT; i++) {
         for (int j = 0; risultati[i][j].parola != NULL; j++) {
-            char* parola = risultati[i][j].parola;
-            int cont = risultati[i][j].contatore;
+            char* parola = risultati[i][j].parola; //copiamo in parola ciò che è contenuto nella cella in posizione [i][j]
+            int cont = risultati[i][j].contatore; //Come prima ma per il contatore legato alla parola
 
             //cerchiamo se la parola si trova già in totale
+
             int trovata = 0;
-            for (int k = 0; k < size; k++) {
-                if (strcmp(totale[k].parola, parola) == 0) {
+            for (int k = 0; k < size; k++) { 
+                if (strcmp(totale[k].parola, parola) == 0) { //strcmp restituisce 0 se le parole sono uguali, in tal caso la parola si trova in totale quindi aumentiamo solo il contatore
                     totale[k].contatore += cont;
                     trovata = 1;
-                    break;
+                    break;//usciamo dal blocco
                 }
             }
 
@@ -50,6 +54,7 @@ WordCount* Reduce(WordCount** risultati) {
             }
         }
     }
+    //l'ultima cella di totale viene impostata a null per gestirla meglio dopo
     totale = realloc(totale, (size + 1) * sizeof(WordCount));
     totale[size].parola = NULL;
     totale[size].contatore = 0;
@@ -59,7 +64,7 @@ WordCount* Reduce(WordCount** risultati) {
 
 
 
-
+//funzione che gestisce la ricezione dei dati
 WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
     printf("siamo in gestisci Ricezione\n");
     WordCount* w = malloc(4 * sizeof(WordCount)); // spazio iniziale
@@ -67,17 +72,17 @@ WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
         perror("malloc iniziale fallita");
         return NULL;
     }
-    int indice = 0;
-    int capienza = 4;
+    int indice = 0;//rappresenta la posizione dell'elemento che dobbiamo salvare
+    int capienza = 4;//capienza di w
 
     while(1){
-        int len_net;
+        int len_net; //lunghezza dati ricevuti
         int cont_net;
 
-        // Ricevi esattamente sizeof(len_net) byte per la lunghezza parola
-        size_t ricevuti = 0;
+        // il clinet potrebbe inviare i byte non tutti insieme quindi usiamo un ciclo
+        size_t ricevuti = 0; //variabile che conterrà il numero di byte ricevuti
         while (ricevuti < sizeof(len_net)) { //ricevuti deve essere minore di 4 byte, poichè len_net è un intero
-            int r = recv(mio_chunk->fd, ((char*)&len_net) + ricevuti, sizeof(len_net) - ricevuti, 0);
+            int r = recv(mio_chunk->fd, ((char*)&len_net) + ricevuti, sizeof(len_net) - ricevuti, 0); //funzione per ricevere i dati, il client deve usare send
             if (r <= 0) { //succede se il client chiude la connessione con closefd
                 if (r == 0) printf("Connessione chiusa dal peer\n");
                 else perror("recv len_net");
@@ -85,7 +90,7 @@ WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
             }
             ricevuti += r; //per ogni byte ricevuto incremento ricevuti
         }
-
+        
         size_t len = (size_t) ntohl(len_net);
         printf("lunghezza della parola: %zu\n", len);
         if (len <= 0 || len > MAX_PAROLA) {
@@ -99,7 +104,7 @@ WordCount* Gestisci_Ricezione(Struttura_Chunk* mio_chunk){
             goto fine;
         }
 
-        // Ricevi esattamente len byte per la parola
+        //operazione uguale a prima ma per la ricezione di parola
         ricevuti = 0;
         while (ricevuti < len) {
             int r = recv(mio_chunk->fd, parola + ricevuti, len - ricevuti, 0);
@@ -147,22 +152,28 @@ fine:
     return w;
 }
 
-
+//funzione eseguita dai thread
 void *FunzioneThread(void *arg) {
-    WordCount ricevuto;
-    Struttura_Chunk *mio_chunk = (Struttura_Chunk *)arg;
+    clock_t inizio, fine; //variabili usate per cronometraggio
+    double tempo_cpu_usato;
+    WordCount ricevuto; 
+    Struttura_Chunk *mio_chunk = (Struttura_Chunk *)arg; //cast degli argomenti in Struttura_chunk 
     //meccanismo di barriera
     pthread_mutex_lock(&mutex); //prendiamo possesso del lock
-    variabile_condivisa++; 
+    variabile_condivisa++; //aumentiamo il valore della variabile condivisa , quando tutti i thread saranno in esecuzione nella funzione, i thread dormienti verranno risvegliati
+    printf("Variabile condivisa : %d\n",variabile_condivisa);
+    sleep(2); 
     if(variabile_condivisa<MAX_CLIENT){
         pthread_cond_wait(&cond,&mutex);//il thread si blocca e rilascia il mutex
     }else{
         pthread_cond_broadcast(&cond);//sveglia tutti i thread in attesa
     }
-    pthread_mutex_unlock(&mutex);  
-    for (int i = 0; i < mio_chunk->numero_chunk; i++) {
-        size_t len = strlen(mio_chunk->Array_Di_Chunk[i]);
-        ssize_t sent = send(mio_chunk->fd, mio_chunk->Array_Di_Chunk[i], len, 0);
+    pthread_mutex_unlock(&mutex); //rilascia il mutex
+    printf("Avvio Timer\n");
+    inizio= clock();  //inizia il crometraggio
+    for (int i = 0; i < mio_chunk->numero_chunk; i++) { //inviamo i chunk al client
+        size_t len = strlen(mio_chunk->Array_Di_Chunk[i]); //salviamo la lunghezza del chunk da inviare al client
+        ssize_t sent = send(mio_chunk->fd, mio_chunk->Array_Di_Chunk[i], len, 0);//la funzione send invia i dati al clinet, fd è il file descrptor della socket di comunicazione, inviamo il chunk
         if (sent < 0) {
             perror("Errore durante send");
             break;
@@ -170,8 +181,8 @@ void *FunzioneThread(void *arg) {
             printf("Inviato chunk %d: %zd byte\n", i, sent);
         }
     }
-    printf("SIAMo DOPO IL FOR IN FUNZIONE THREAD, STIAMO PER INVOCARE GESTISCI RICEZIONE\n");
-    WordCount* w=Gestisci_Ricezione(mio_chunk);
+    //printf("SIAMo DOPO IL FOR IN FUNZIONE THREAD, STIAMO PER INVOCARE GESTISCI RICEZIONE\n");
+    WordCount* w=Gestisci_Ricezione(mio_chunk); //funzione che gestisce la ricezione dei dati inviati dal client
     printf("FD:%d,stringa: %s\n",mio_chunk->fd,w->parola);
     int chiusura=close(mio_chunk->fd);
     if(chiusura==-1){
@@ -180,8 +191,11 @@ void *FunzioneThread(void *arg) {
         printf("Chiusura della connessione col client avvenuta col successore, FD->%d\n",mio_chunk->fd);
     }
     printf("Connessione chiusa col client\n");
+    fine= clock(); //fine cronometraggio
+    tempo_cpu_usato=((double) (fine-inizio)) /CLOCKS_PER_SEC;
+    printf("Tempo impiegato : %f secondi\n",tempo_cpu_usato);
     pthread_exit(w);
-}
+} 
 
 
 
@@ -192,12 +206,12 @@ void *FunzioneThread(void *arg) {
 
 
 
-
+//funzione usata in fase di scrittura del codice per il debbuging ma non utile effettivamente al codice
 void StampaChunk(char ** Collezione_chunk, int numero_chunk){
         printf("numero chunk: %d\n",numero_chunk);
         for(int i=0;i<numero_chunk;i++){
             //printf("Chunk numero %d: %s\n",i,Collezione_chunk[i]);
-            printf("ciao\n");
+            printf("----\n");
         }
         printf("numero chunk:%d\n",numero_chunk);
         return;
@@ -205,7 +219,7 @@ void StampaChunk(char ** Collezione_chunk, int numero_chunk){
 
 //alla fine del ciclo di letture del file, averemo un array di puntatori dinamico popolato dai vari chunk
 void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk){
-    printf("siamo in salva_chunk\n");
+    //printf("siamo in salva_chunk\n");
     char* copia= malloc(strlen(chunk)+1); // strlen restituisce il numero di caratteri visibili escludendo il terminatore di riga quindi poniamo +1
                                           // Non usiamo sizeof perchè ci restituirebbe la lunghezza del tipo, in questo caso il puntatore in un'architettura a 64 bit è 64
     if (!copia) {
@@ -226,7 +240,7 @@ void salva_chunk(char*** collezione_chunck, char* chunk, int *numero_chunk){
 
 
 void chunk(char*** collezione_chunk,int *numero_chunk) {
-    printf("siamo entrati in chunk\n");
+    //apriamo il file
     FILE *f = fopen("lotr.txt", "r");
     if (!f) {
         perror("errore apertura file");
@@ -243,7 +257,7 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
 
     while (1) {
         size_t n = fread(buffer, 1, DIM_CHUNK, f); //leggiamo un blocco, RESTITUISCE 0 SE NON HA LETTO NULLA
-        printf("Valore di n: %zu\n", n);
+        //printf("Valore di n: %zu\n", n);
         if (n == 0) {
             if (feof(f)) break;
             if (ferror(f)) {
@@ -268,17 +282,16 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
         }
 
         size_t lunghezza_chunk = ultimo_spazio - buffer;
-        printf("ultimo_spazio - buffer = %ld\n", ultimo_spazio - buffer);
+        //printf("ultimo_spazio - buffer = %ld\n", ultimo_spazio - buffer);
 
         char *chunk = malloc(lunghezza_chunk + 1); //copiamo il chunk buono, senza parole spezzate 
         memcpy(chunk, buffer, lunghezza_chunk);    //copiamo effettivamente i dati
         chunk[lunghezza_chunk] = '\0';             //pongo il terminatore
         //printf("chunk1: %s\n",chunk);
-        sleep(1);
         //printf("Contenuto letto: '%.*s'\n", (int)n, buffer);
         //aggiungiamo il chunk alla collezione
         salva_chunk(collezione_chunk, chunk, numero_chunk);
-        printf("siamo dopo salva_chunk\n");
+        //printf("siamo dopo salva_chunk\n");
         free(chunk); //libero lo spazio in memoria
 
         //indietro contiene il numero di byte letti in più rispetto a quelli che vogliamo usare
@@ -291,31 +304,30 @@ void chunk(char*** collezione_chunk,int *numero_chunk) {
         }
     }
     //appena il file viene finito di leggere
+    //recuperiamo gli ultimi due chunk
     char *penultimo = (*collezione_chunk)[(*numero_chunk) - 2];
     char *ultimo = (*collezione_chunk)[(*numero_chunk) - 1];
-    
+    //creiamo la stringa che accoppia gli ultimi due chunk
     size_t nuova_lunghezza = strlen(penultimo) + 1 + strlen(ultimo) + 1;
-    
+    //espandiamo la memoria del penultimo chunk per contenere anche l'ultimo chunk
     char *nuovo_penultimo = realloc(penultimo, nuova_lunghezza);
     if (!nuovo_penultimo) {
         perror("realloc fallita");
         exit(EXIT_FAILURE);
     }
-    
+    //aggiunge uno spazio e il contenuto di ultimo a nuovo_penultimo
     strcat(nuovo_penultimo, " ");
     strcat(nuovo_penultimo, ultimo);
-    
+    //inserisce in collezionechunk nella penultima posizone nuovo_penultimo
     (*collezione_chunk)[(*numero_chunk) - 2] = nuovo_penultimo;
-    
+    //libera lo spazio dall'ultimo elemento che ora non ci serve più perchè è concatenato con l'ultimo
     free((*collezione_chunk)[(*numero_chunk) - 1]);
-
+    //decrementa il numero di chunk perchè abbiamo eliminato l'ultimo chunk
     (*numero_chunk)--;
 
     sleep(5);
-    printf("CIAOOOOO\n");
-    sleep(10);
-    printf("UltimoOOOOOOOOOOOOOOOOOOOOOOOOOOO %s\n", (*collezione_chunk)[(*numero_chunk) - 1] );
-    sleep(5);
+    //printf("CIAO\n");
+    //printf("messaggio prova %s\n", (*collezione_chunk)[(*numero_chunk) - 1] );
     //(*collezione_chunk)[*numero_chunk-1]=realloc((*collezione_chunk)[*numero_chunk-1],sizeof((*collezione_chunk)[*numero_chunk]))
     free(buffer);
     fclose(f);
